@@ -27,7 +27,7 @@
       border-radius: 10px;
       margin-bottom: 20px;
     }
-    input {
+    input, button {
       width: 100%;
       padding: 8px;
       margin-top: 8px;
@@ -35,17 +35,17 @@
       border: none;
       font-size: 1rem;
       color: black;
+      box-sizing: border-box;
     }
     button {
-      margin-top: 12px;
-      padding: 10px 20px;
-      font-size: 1rem;
-      border: none;
       background: linear-gradient(90deg, #7b2ff7, #f107a3);
       color: white;
       border-radius: 25px;
       cursor: pointer;
       transition: 0.3s;
+      width: auto;
+      padding: 10px 20px;
+      margin-top: 12px;
     }
     button:hover {
       background: linear-gradient(90deg, #f107a3, #7b2ff7);
@@ -64,6 +64,15 @@
     .user-card p {
       margin: 5px 0 0 0;
     }
+    #searchBar {
+      margin-bottom: 20px;
+      padding: 8px;
+      border-radius: 5px;
+      border: none;
+      font-size: 1rem;
+      width: 100%;
+      box-sizing: border-box;
+    }
   </style>
 </head>
 <body>
@@ -77,8 +86,11 @@
     <input type="text" id="department" placeholder="Department" required />
     <input type="date" id="dob" placeholder="Date of Birth" required />
     <input type="text" id="languages" placeholder="Languages (comma separated)" />
+    <input type="file" id="pdfFile" accept="application/pdf" />
     <button type="submit">Add User</button>
   </form>
+
+  <input type="text" id="searchBar" placeholder="Search by Department..." />
 
   <section id="usersList">
     <h2>User Profiles</h2>
@@ -87,7 +99,6 @@
 
   <!-- Firebase SDKs -->
   <script type="module">
-    // Import Firebase SDK
     import { initializeApp } from "https://www.gstatic.com/firebasejs/12.0.0/firebase-app.js";
     import {
       getFirestore,
@@ -98,8 +109,13 @@
       where,
       getDocs
     } from "https://www.gstatic.com/firebasejs/12.0.0/firebase-firestore.js";
+    import {
+      getStorage,
+      ref,
+      uploadBytes,
+      getDownloadURL
+    } from "https://www.gstatic.com/firebasejs/12.0.0/firebase-storage.js";
 
-    // Your Firebase config - replace with your config object!
     const firebaseConfig = {
       apiKey: "AIzaSyCPQ4YPE8oCGcpjw2dcAgZrAdU65gG83_4",
       authDomain: "see-v-f68db.firebaseapp.com",
@@ -109,15 +125,17 @@
       appId: "1:614899334242:web:ceb5181a97039b2cdea53b"
     };
 
-    // Initialize Firebase and Firestore
     const app = initializeApp(firebaseConfig);
     const db = getFirestore(app);
+    const storage = getStorage(app);
 
     const userForm = document.getElementById('userForm');
     const usersList = document.getElementById('usersList');
     const noUsersMsg = document.getElementById('noUsersMsg');
+    const searchBar = document.getElementById('searchBar');
 
-    // Add user on form submit
+    let allUsers = []; // to store all users locally for filtering
+
     userForm.addEventListener('submit', async (e) => {
       e.preventDefault();
 
@@ -126,13 +144,14 @@
       const department = document.getElementById('department').value.trim();
       const dob = document.getElementById('dob').value;
       const languages = document.getElementById('languages').value.trim();
+      const pdfFile = document.getElementById('pdfFile').files[0];
 
       if(!name || !email || !department || !dob) {
         alert('Please fill all required fields');
         return;
       }
 
-      // Check if email already exists in Firestore
+      // Check if email exists
       const q = query(collection(db, "users"), where("email", "==", email));
       const querySnapshot = await getDocs(q);
       if (!querySnapshot.empty) {
@@ -140,14 +159,26 @@
         return;
       }
 
-      // Add user to Firestore
+      let pdfURL = "";
+      if (pdfFile) {
+        try {
+          const pdfRef = ref(storage, `pdfs/${email}_${Date.now()}_${pdfFile.name}`);
+          const snapshot = await uploadBytes(pdfRef, pdfFile);
+          pdfURL = await getDownloadURL(snapshot.ref);
+        } catch(error) {
+          alert("PDF upload failed: " + error.message);
+          return;
+        }
+      }
+
       try {
         await addDoc(collection(db, "users"), {
           name,
           email,
           department,
           dob,
-          languages
+          languages,
+          pdfURL
         });
 
         userForm.reset();
@@ -156,34 +187,49 @@
       }
     });
 
-    // Real-time listener for users collection
-    onSnapshot(collection(db, "users"), (snapshot) => {
-      if (snapshot.empty) {
+    // Render users
+    function renderUsers(users) {
+      usersList.innerHTML = '<h2>User Profiles</h2>';
+      if (users.length === 0) {
         noUsersMsg.style.display = 'block';
-        noUsersMsg.textContent = 'No users yet. Add someone!';
-        usersList.innerHTML = '<h2>User Profiles</h2>';
+        noUsersMsg.textContent = 'No users found.';
         return;
       }
       noUsersMsg.style.display = 'none';
-      usersList.innerHTML = '<h2>User Profiles</h2>';
 
-      snapshot.forEach(doc => {
-        const user = doc.data();
+      users.forEach(user => {
         const div = document.createElement('div');
         div.className = 'user-card';
-
         div.innerHTML = `
           <h3>${user.name}</h3>
           <p><strong>Email:</strong> ${user.email}</p>
           <p><strong>Department:</strong> ${user.department}</p>
           <p><strong>Date of Birth:</strong> ${user.dob}</p>
           <p><strong>Languages:</strong> ${user.languages || 'None'}</p>
+          ${user.pdfURL ? `<p><a href="${user.pdfURL}" target="_blank" style="color:#f107a3;">View PDF</a></p>` : ''}
         `;
-
         usersList.appendChild(div);
       });
+    }
+
+    // Real-time snapshot listener
+    onSnapshot(collection(db, "users"), (snapshot) => {
+      allUsers = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      renderUsers(allUsers);
     });
 
+    // Search filter
+    searchBar.addEventListener('input', () => {
+      const searchText = searchBar.value.trim().toLowerCase();
+      if (!searchText) {
+        renderUsers(allUsers);
+        return;
+      }
+      const filtered = allUsers.filter(user =>
+        user.department.toLowerCase().includes(searchText)
+      );
+      renderUsers(filtered);
+    });
   </script>
 </body>
 </html>
