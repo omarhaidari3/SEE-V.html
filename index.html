@@ -3,109 +3,66 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>SEE-V Mini LinkedIn</title>
+  <title>SEE-V Mini LinkedIn with Firebase</title>
   <style>
-    @keyframes moveZigzag {
-      0% { background-position: 0 0; }
-      100% { background-position: 120px 0; }
-    }
     body {
-      position: relative;
       font-family: Arial, sans-serif;
+      background: linear-gradient(135deg, #3a0ca3, #720026);
       color: white;
       padding: 20px;
       max-width: 600px;
       margin: auto;
-      overflow-x: hidden;
-      z-index: 0;
-      background: #203a43;
-    }
-    body::before {
-      content: "";
-      position: fixed;
-      top: 0; left: 0; right: 0; bottom: 0;
-      background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="120" height="40" viewBox="0 0 120 40"><path fill="none" stroke="rgba(255,255,255,0.1)" stroke-width="2" d="M0 30 L10 10 L20 30 L30 10 L40 30 L50 10 L60 30 L70 10 L80 30 L90 10 L100 30 L110 10 L120 30"/></svg>');
-      background-repeat: repeat;
-      background-size: 120px 40px;
-      animation: moveZigzag 10s linear infinite;
-      z-index: -1;
-      opacity: 0.15;
-      pointer-events: none;
     }
     h1 {
       text-align: center;
-      background: linear-gradient(90deg, #00dbde, #fc00ff);
+      background: linear-gradient(90deg, #7b2ff7, #f107a3);
       -webkit-background-clip: text;
       -webkit-text-fill-color: transparent;
       font-size: 3rem;
       margin-bottom: 0;
-      position: relative;
-      z-index: 1;
     }
     form {
       background: rgba(255 255 255 / 0.1);
       padding: 15px;
       border-radius: 10px;
       margin-bottom: 20px;
-      box-shadow: 0 0 10px rgba(0,0,0,0.2);
-      position: relative;
-      z-index: 1;
     }
-    input, textarea {
+    input {
       width: 100%;
       padding: 8px;
       margin-top: 8px;
       border-radius: 5px;
       border: none;
       font-size: 1rem;
-      background: rgba(255 255 255 / 0.15);
-      color: white;
-      position: relative;
-      z-index: 1;
-    }
-    input::placeholder,
-    textarea::placeholder {
-      color: #ddd;
+      color: black;
     }
     button {
       margin-top: 12px;
       padding: 10px 20px;
       font-size: 1rem;
       border: none;
+      background: linear-gradient(90deg, #7b2ff7, #f107a3);
+      color: white;
       border-radius: 25px;
       cursor: pointer;
-      color: white;
-      background: linear-gradient(90deg, #fc00ff, #bf00ff);
-      transition: background 0.3s ease;
-      position: relative;
-      z-index: 1;
+      transition: 0.3s;
     }
     button:hover {
-      background: #00dbde;
+      background: linear-gradient(90deg, #f107a3, #7b2ff7);
     }
     .user-card {
       background: rgba(255 255 255 / 0.15);
       padding: 15px;
       border-radius: 10px;
       margin-bottom: 10px;
-      position: relative;
-      z-index: 1;
     }
     .user-card h3 {
       margin: 0;
       font-weight: 700;
-      color: white;
+      color: #f107a3;
     }
     .user-card p {
       margin: 5px 0 0 0;
-      color: #eee;
-    }
-    #noUsersMsg {
-      color: #bbb;
-      font-style: italic;
-      text-align: center;
-      position: relative;
-      z-index: 1;
     }
   </style>
 </head>
@@ -115,22 +72,34 @@
 
   <form id="userForm">
     <h2>Create Profile</h2>
-    <input type="text" id="username" placeholder="Username" required />
+    <input type="text" id="name" placeholder="Name" required />
     <input type="email" id="email" placeholder="Email" required />
-    <textarea id="bio" placeholder="Bio (optional)"></textarea>
-    <button type="submit" id="addUserBtn">Add User</button>
+    <input type="text" id="department" placeholder="Department" required />
+    <input type="date" id="dob" placeholder="Date of Birth" required />
+    <input type="text" id="languages" placeholder="Languages (comma separated)" />
+    <button type="submit">Add User</button>
   </form>
 
   <section id="usersList">
     <h2>User Profiles</h2>
-    <p id="noUsersMsg">No users yet. Add someone!</p>
+    <p id="noUsersMsg">Loading users...</p>
   </section>
 
   <!-- Firebase SDKs -->
-  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+  <script type="module">
+    // Import Firebase SDK
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/12.0.0/firebase-app.js";
+    import {
+      getFirestore,
+      collection,
+      addDoc,
+      query,
+      onSnapshot,
+      where,
+      getDocs
+    } from "https://www.gstatic.com/firebasejs/12.0.0/firebase-firestore.js";
 
-  <script>
+    // Your Firebase config - replace with your config object!
     const firebaseConfig = {
       apiKey: "AIzaSyCPQ4YPE8oCGcpjw2dcAgZrAdU65gG83_4",
       authDomain: "see-v-f68db.firebaseapp.com",
@@ -140,90 +109,81 @@
       appId: "1:614899334242:web:ceb5181a97039b2cdea53b"
     };
 
-    // Initialize Firebase
-    firebase.initializeApp(firebaseConfig);
-    const db = firebase.firestore();
+    // Initialize Firebase and Firestore
+    const app = initializeApp(firebaseConfig);
+    const db = getFirestore(app);
 
     const userForm = document.getElementById('userForm');
     const usersList = document.getElementById('usersList');
     const noUsersMsg = document.getElementById('noUsersMsg');
-    const addUserBtn = document.getElementById('addUserBtn');
 
+    // Add user on form submit
     userForm.addEventListener('submit', async (e) => {
       e.preventDefault();
 
-      const username = document.getElementById('username').value.trim();
+      const name = document.getElementById('name').value.trim();
       const email = document.getElementById('email').value.trim();
-      const bio = document.getElementById('bio').value.trim();
+      const department = document.getElementById('department').value.trim();
+      const dob = document.getElementById('dob').value;
+      const languages = document.getElementById('languages').value.trim();
 
-      if (!username || !email) {
-        alert('Please fill in username and email.');
+      if(!name || !email || !department || !dob) {
+        alert('Please fill all required fields');
         return;
       }
 
-      // Check for existing username
-      const usernameQuery = await db.collection('users').where('username_lower', '==', username.toLowerCase()).get();
-      if (!usernameQuery.empty) {
-        alert('Username already exists!');
-        return;
-      }
-
-      // Check for existing email
-      const emailQuery = await db.collection('users').where('email_lower', '==', email.toLowerCase()).get();
-      if (!emailQuery.empty) {
-        alert('Email already exists!');
+      // Check if email already exists in Firestore
+      const q = query(collection(db, "users"), where("email", "==", email));
+      const querySnapshot = await getDocs(q);
+      if (!querySnapshot.empty) {
+        alert('This email is already registered!');
         return;
       }
 
       // Add user to Firestore
-      await db.collection('users').add({
-        username,
-        username_lower: username.toLowerCase(),
-        email,
-        email_lower: email.toLowerCase(),
-        bio,
-        createdAt: firebase.firestore.FieldValue.serverTimestamp()
-      });
+      try {
+        await addDoc(collection(db, "users"), {
+          name,
+          email,
+          department,
+          dob,
+          languages
+        });
 
-      userForm.reset();
-
-      // Flash button color on success
-      addUserBtn.style.background = '#00dbde';
-      setTimeout(() => {
-        addUserBtn.style.background = 'linear-gradient(90deg, #fc00ff, #bf00ff)';
-      }, 500);
+        userForm.reset();
+      } catch (error) {
+        alert("Error adding user: " + error.message);
+      }
     });
 
-    // Real-time listener to update users list live
-    db.collection('users').orderBy('createdAt', 'desc').onSnapshot(snapshot => {
-      const users = [];
-      snapshot.forEach(doc => users.push(doc.data()));
-      renderUsers(users);
-    });
-
-    function renderUsers(users) {
-      if (users.length === 0) {
+    // Real-time listener for users collection
+    onSnapshot(collection(db, "users"), (snapshot) => {
+      if (snapshot.empty) {
         noUsersMsg.style.display = 'block';
+        noUsersMsg.textContent = 'No users yet. Add someone!';
         usersList.innerHTML = '<h2>User Profiles</h2>';
         return;
-      } else {
-        noUsersMsg.style.display = 'none';
       }
-
+      noUsersMsg.style.display = 'none';
       usersList.innerHTML = '<h2>User Profiles</h2>';
 
-      users.forEach(user => {
+      snapshot.forEach(doc => {
+        const user = doc.data();
         const div = document.createElement('div');
         div.className = 'user-card';
+
         div.innerHTML = `
-          <h3>${user.username}</h3>
+          <h3>${user.name}</h3>
           <p><strong>Email:</strong> ${user.email}</p>
-          <p><em>${user.bio || 'No bio provided.'}</em></p>
+          <p><strong>Department:</strong> ${user.department}</p>
+          <p><strong>Date of Birth:</strong> ${user.dob}</p>
+          <p><strong>Languages:</strong> ${user.languages || 'None'}</p>
         `;
+
         usersList.appendChild(div);
       });
-    }
-  </script>
+    });
 
+  </script>
 </body>
 </html>
