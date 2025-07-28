@@ -173,6 +173,35 @@
       border: 1.5px solid var(--card-border);
       box-shadow: 0 2px 6px var(--card-shadow);
       transition: background-color 0.3s, color 0.3s, border-color 0.3s;
+      cursor: pointer;
+      user-select: none;
+      overflow: hidden;
+      max-height: 3.5rem; /* approx height for just name */
+      position: relative;
+      transition: max-height 0.4s ease, box-shadow 0.3s ease;
+    }
+    #usersList > div.expanded {
+      max-height: 1000px; /* big enough for full content */
+      box-shadow: 0 6px 15px var(--card-shadow);
+      cursor: default;
+    }
+    /* Name always visible */
+    #usersList > div h3 {
+      margin: 0;
+    }
+    /* Hidden details */
+    #usersList > div .details {
+      opacity: 0;
+      max-height: 0;
+      overflow: hidden;
+      transition: opacity 0.3s ease 0.2s, max-height 0.3s ease 0.2s;
+      font-size: 0.9rem;
+      margin-top: 10px;
+    }
+    /* Show details when expanded */
+    #usersList > div.expanded .details {
+      opacity: 1;
+      max-height: 1000px;
     }
 
     /* Departments list style */
@@ -217,30 +246,6 @@
       transition: background-color 0.3s, color 0.3s;
     }
 
-    /* Profile boxes for collapsible details */
-    .profile-box {
-      background: var(--card-bg);
-      color: var(--card-text);
-      padding: 12px 15px;
-      margin-bottom: 10px;
-      border-radius: 8px;
-      cursor: pointer;
-      user-select: none;
-      border: 1.5px solid var(--card-border);
-      box-shadow: 0 2px 6px var(--card-shadow);
-      transition: box-shadow 0.3s ease;
-    }
-
-    .profile-name {
-      font-weight: bold;
-      font-size: 1.1rem;
-      font-family: "Times New Roman", serif;
-    }
-
-    .profile-box:hover {
-      box-shadow: 0 0 12px var(--button-bg);
-    }
-
     /* Responsive */
     @media (max-width: 600px) {
       .container {
@@ -273,6 +278,26 @@
       #themeToggle {
         margin-top: 0;
         order: 10; /* push it to end on small screens */
+      }
+
+      /* User cards on mobile: show details below name */
+      #usersList > div {
+        max-height: none;
+        cursor: default;
+        padding: 10px 15px;
+        display: block;
+        border-radius: 10px;
+        box-shadow: 0 2px 6px var(--card-shadow);
+      }
+      #usersList > div h3 {
+        margin-bottom: 10px;
+      }
+      #usersList > div .details {
+        opacity: 1 !important;
+        max-height: none !important;
+        overflow: visible !important;
+        transition: none !important;
+        font-size: 1rem;
       }
     }
   </style>
@@ -469,229 +494,245 @@
         const filtered = departments.filter(dep =>
           dep.toLowerCase().includes(filter.toLowerCase())
         );
-        departmentsList.innerHTML = "";
-        if(filtered.length === 0){
-          departmentsList.innerHTML = "<p>No departments found.</p>";
-          return;
-        }
-        filtered.forEach(dep => {
-          const btn = document.createElement('button');
-          btn.textContent = dep;
-          btn.addEventListener('click', () => loadUsersByDepartment(dep));
-          departmentsList.appendChild(btn);
+        departmentsList.innerHTML = filtered.map(dep => `<button type="button" class="dept-btn">${dep}</button>`).join('');
+        // Add click to filter users by dept
+        const deptButtons = departmentsList.querySelectorAll('.dept-btn');
+        deptButtons.forEach(btn => {
+          btn.addEventListener('click', () => {
+            filterUsersByDepartment(btn.textContent);
+          });
         });
       }
 
-      renderDepartments();
+      function createUserCard(user) {
+        const card = document.createElement('div');
+        card.setAttribute('tabindex', '0'); // make focusable for accessibility
+        card.innerHTML = `
+          <h3>${user.name}</h3>
+          <div class="details">
+            <p><strong>Email:</strong> ${user.email}</p>
+            <p><strong>Department:</strong> ${user.department}</p>
+            <p><strong>Date of Birth:</strong> ${user.dob}</p>
+            <p><strong>Languages:</strong> ${user.languages || 'N/A'}</p>
+            ${user.resumeUrl ? `<p><a href="${user.resumeUrl}" target="_blank" rel="noopener noreferrer">View Resume</a></p>` : ''}
+          </div>
+        `;
+        card.addEventListener('click', () => {
+          // Toggle expanded class on desktop only
+          if(window.innerWidth > 600) {
+            card.classList.toggle('expanded');
+          }
+        });
+        return card;
+      }
 
-      searchInput.addEventListener('input', () => {
-        renderDepartments(searchInput.value);
+      async function loadUsers() {
+        usersList.innerHTML = 'Loading profiles...';
+        const usersCol = collection(db, "users");
+        const usersSnapshot = await getDocs(usersCol);
+        const usersData = [];
+        usersSnapshot.forEach(doc => {
+          usersData.push({ id: doc.id, ...doc.data() });
+        });
+        usersList.innerHTML = '';
+        usersData.forEach(user => {
+          usersList.appendChild(createUserCard(user));
+        });
+      }
+
+      function filterUsersByDepartment(dep) {
+        // Fetch and show only users with matching department
+        getDocs(query(collection(db, "users"), where("department", "==", dep)))
+          .then(snapshot => {
+            usersList.innerHTML = '';
+            if(snapshot.empty) {
+              usersList.innerHTML = '<p>No profiles found for this department.</p>';
+              return;
+            }
+            snapshot.forEach(doc => {
+              usersList.appendChild(createUserCard({ id: doc.id, ...doc.data() }));
+            });
+          })
+          .catch(e => {
+            usersList.innerHTML = `<p>Error fetching profiles: ${e.message}</p>`;
+          });
+      }
+
+      // Initial render all departments and load users
+      renderDepartments();
+      await loadUsers();
+
+      // Search input event
+      searchInput.addEventListener('input', e => {
+        renderDepartments(e.target.value);
       });
 
+      // Show/hide add user form
       showAddUserFormBtn.addEventListener('click', () => {
-        if(addUserFormContainer.style.display === 'none'){
+        if(addUserFormContainer.style.display === 'none') {
           addUserFormContainer.style.display = 'block';
-          showAddUserFormBtn.textContent = 'Hide Add Profile Form';
+          showAddUserFormBtn.textContent = 'Hide Form';
+          addUserFormContainer.scrollIntoView({ behavior: 'smooth' });
         } else {
           addUserFormContainer.style.display = 'none';
           showAddUserFormBtn.textContent = 'Add Your CV';
         }
       });
 
+      // Handle form submit with email uniqueness check
       userForm.addEventListener('submit', async e => {
         e.preventDefault();
+
         const name = document.getElementById('name').value.trim();
-        const email = document.getElementById('email').value.trim();
+        const email = document.getElementById('email').value.trim().toLowerCase();
         const department = document.getElementById('department').value;
         const dob = document.getElementById('dob').value;
         const languages = document.getElementById('languages').value.trim();
-        const resumeFile = document.getElementById('resume').files[0];
+        const resumeInput = document.getElementById('resume');
 
-        if(!name || !email || !department || !dob){
+        if(!name || !email || !department || !dob) {
           alert('Please fill all required fields.');
           return;
         }
 
-        // Check if email already exists:
-        const emailQuery = query(collection(db, 'users'), where('email', '==', email));
-        const emailSnapshot = await getDocs(emailQuery);
-        if(!emailSnapshot.empty) {
+        // Check if email already exists in Firestore
+        const q = query(collection(db, "users"), where("email", "==", email));
+        const existing = await getDocs(q);
+        if(!existing.empty) {
           alert('This email is already registered.');
           return;
         }
 
-        let resumeUrl = null;
+        // Upload resume if any
+        let resumeUrl = '';
+        if(resumeInput.files.length > 0) {
+          const file = resumeInput.files[0];
+          if(file.type !== "application/pdf") {
+            alert('Only PDF files are accepted for resume.');
+            return;
+          }
+          const storageRef = ref(storage, `resumes/${Date.now()}_${file.name}`);
+          const uploadTask = uploadBytesResumable(storageRef, file);
 
-        if(resumeFile){
           progressBar.style.display = 'block';
-          const storageRef = ref(storage, `resumes/${Date.now()}_${resumeFile.name}`);
-          const uploadTask = uploadBytesResumable(storageRef, resumeFile);
+          progressBar.value = 0;
+
           uploadTask.on('state_changed',
-            (snapshot) => {
+            snapshot => {
               const progress = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
               progressBar.value = progress;
             },
-            (error) => {
-              alert('Upload failed: ' + error.message);
+            error => {
+              alert("Error uploading resume: " + error.message);
               progressBar.style.display = 'none';
             },
             async () => {
               resumeUrl = await getDownloadURL(uploadTask.snapshot.ref);
               progressBar.style.display = 'none';
-              await addUserData();
+              saveUser();
             }
           );
         } else {
-          await addUserData();
+          saveUser();
         }
 
-        async function addUserData(){
+        async function saveUser() {
           try {
-            await addDoc(collection(db, 'users'), {
-              name, email, department, dob, languages, resumeUrl
+            await addDoc(collection(db, "users"), {
+              name, email, department, dob,
+              languages,
+              resumeUrl
             });
             alert('Profile added successfully!');
             userForm.reset();
             addUserFormContainer.style.display = 'none';
             showAddUserFormBtn.textContent = 'Add Your CV';
-            loadUsersByDepartment(department); // reload the filtered users
+            await loadUsers();
           } catch (error) {
             alert('Error adding profile: ' + error.message);
           }
         }
       });
-
-      // Load users by department
-      async function loadUsersByDepartment(dep) {
-        usersList.innerHTML = `<p>Loading profiles for <strong>${dep}</strong>...</p>`;
-        try {
-          const q = query(collection(db, 'users'), where('department', '==', dep));
-          const querySnapshot = await getDocs(q);
-          if(querySnapshot.empty){
-            usersList.innerHTML = `<p>No profiles found in <strong>${dep}</strong>.</p>`;
-            return;
-          }
-          usersList.innerHTML = '';
-          querySnapshot.forEach(doc => {
-            const data = doc.data();
-            const div = document.createElement('div');
-            div.innerHTML = `
-              <strong>${data.name}</strong><br />
-              Email: ${data.email}<br />
-              DOB: ${data.dob}<br />
-              Languages: ${data.languages || 'N/A'}<br />
-              ${data.resumeUrl ? `<a href="${data.resumeUrl}" target="_blank" rel="noopener noreferrer">View Resume</a>` : ''}
-            `;
-            div.style.background = 'var(--card-bg)';
-            div.style.color = 'var(--card-text)';
-            div.style.padding = '10px';
-            div.style.marginBottom = '8px';
-            div.style.borderRadius = '8px';
-            div.style.border = '1.5px solid var(--card-border)';
-            div.style.boxShadow = '0 2px 6px var(--card-shadow)';
-            usersList.appendChild(div);
-          });
-        } catch (error) {
-          usersList.innerHTML = `<p>Error loading profiles: ${error.message}</p>`;
-        }
-      }
     }
 
     async function loadProfiles() {
-      mainContent.innerHTML = `<h1>All Profiles</h1><div id="profilesList">Loading profiles...</div>`;
+      mainContent.innerHTML = `
+        <h1>Profiles</h1>
+        <div id="profilesList" style="margin-top: 20px;"></div>
+      `;
+
       const profilesList = document.getElementById('profilesList');
-      try {
-        const querySnapshot = await getDocs(collection(db, 'users'));
-        profilesList.innerHTML = '';
-        if (querySnapshot.empty) {
-          profilesList.innerHTML = '<p>No profiles found.</p>';
-          return;
-        }
-        querySnapshot.forEach(doc => {
-          const data = doc.data();
-          const div = document.createElement('div');
-          div.classList.add('profile-box');
-          div.innerHTML = `
-            <div class="profile-name">${data.name}</div>
-            <div class="profile-details" style="display:none; margin-top:10px; font-size:0.9rem; color: var(--main-text);">
-              <strong>Email:</strong> ${data.email} <br />
-              <strong>Department:</strong> ${data.department} <br />
-              <strong>DOB:</strong> ${data.dob} <br />
-              <strong>Languages:</strong> ${data.languages || 'N/A'} <br />
-              ${data.resumeUrl ? `<a href="${data.resumeUrl}" target="_blank" rel="noopener noreferrer">View Resume</a>` : ''}
-            </div>
-          `;
-          // Toggle details on click
-          div.addEventListener('click', () => {
-            const details = div.querySelector('.profile-details');
-            if(details.style.display === 'none') {
-              details.style.display = 'block';
-              div.style.boxShadow = '0 0 12px var(--button-bg)';
-            } else {
-              details.style.display = 'none';
-              div.style.boxShadow = '0 2px 6px var(--card-shadow)';
-            }
-          });
-          profilesList.appendChild(div);
-        });
-      } catch (error) {
-        profilesList.innerHTML = `<p>Error loading profiles: ${error.message}</p>`;
-      }
+
+      profilesList.innerHTML = 'Loading profiles...';
+
+      const usersCol = collection(db, "users");
+      const usersSnapshot = await getDocs(usersCol);
+      const usersData = [];
+      usersSnapshot.forEach(doc => {
+        usersData.push({ id: doc.id, ...doc.data() });
+      });
+
+      profilesList.innerHTML = '';
+      usersData.forEach(user => {
+        const div = document.createElement('div');
+        div.innerHTML = `
+          <h3>${user.name}</h3>
+          <div class="details">
+            <p><strong>Email:</strong> ${user.email}</p>
+            <p><strong>Department:</strong> ${user.department}</p>
+            <p><strong>Date of Birth:</strong> ${user.dob}</p>
+            <p><strong>Languages:</strong> ${user.languages || 'N/A'}</p>
+            ${user.resumeUrl ? `<p><a href="${user.resumeUrl}" target="_blank" rel="noopener noreferrer">View Resume</a></p>` : ''}
+          </div>
+        `;
+        div.classList.add('profile-card');
+        profilesList.appendChild(div);
+      });
     }
 
     function loadAbout() {
       mainContent.innerHTML = `
         <h1>About Us</h1>
-        <p style="line-height: 1.5; font-family:'Times New Roman', serif;">
-          Welcome to SEE-V, your trusted platform designed to connect new graduates and professionals with top companies.<br><br>
-          We understand the challenges faced by fresh graduates entering the job market and the need for companies to find talented individuals efficiently.<br><br>
-          SEE-V provides a simple, effective way to showcase your CV and skills to potential employers across multiple departments including Engineering, Business, AI, Cybersecurity, and more.<br><br>
-          Companies can browse through profiles, filter by department, and find the right candidates with ease.<br><br>
-          Our mission is to bridge the gap between education and employment by making the job search and recruitment process smooth and accessible for everyone.
-        </p>
+        <p>Welcome to SEE-V, a platform dedicated to helping fresh graduates and companies connect through detailed CVs and profiles.</p>
+        <p>We provide a simple, user-friendly interface for users to upload their CVs, showcase their skills, and for companies to discover the best talents in various departments and fields.</p>
+        <p>Our mission is to bridge the gap between new graduates seeking opportunities and companies searching for qualified professionals.</p>
+        <p>Start by adding your CV in the Departments section and explore profiles across different fields.</p>
       `;
     }
 
     function loadContact() {
       mainContent.innerHTML = `
         <h1>Contact Us</h1>
-        <p>Please reach out with any questions or feedback at <a href="mailto:omer.haidari@gmail.com">omer.haidari@gmail.com</a>.</p>
+        <p>For inquiries, support or feedback, please reach out:</p>
+        <ul>
+          <li>Email: support@seev.com</li>
+          <li>Phone: +971 50 123 4567</li>
+          <li>Address: Dubai, UAE</li>
+        </ul>
       `;
     }
 
-    // Navigation handling
-    navLinks.forEach(link => {
-      link.addEventListener('click', e => {
-        e.preventDefault();
-        const page = link.dataset.page;
-        navigateTo(page);
-      });
-    });
-
-    async function navigateTo(page) {
+    // Navigation handler
+    function navigateTo(page) {
       setActiveLink(page);
       switch(page) {
-        case 'home':
-          loadHome();
-          break;
-        case 'profiles':
-          await loadProfiles();
-          break;
-        case 'department':
-          await loadDepartment();
-          break;
-        case 'about':
-          loadAbout();
-          break;
-        case 'contact':
-          loadContact();
-          break;
-        default:
-          loadHome();
+        case 'home': loadHome(); break;
+        case 'profiles': loadDepartment(); break; // We use the Department page as main profile viewer
+        case 'department': loadDepartment(); break;
+        case 'about': loadAbout(); break;
+        case 'contact': loadContact(); break;
+        default: loadHome();
       }
     }
 
-    // Load home on initial load
+    navLinks.forEach(link => {
+      link.addEventListener('click', e => {
+        e.preventDefault();
+        navigateTo(link.dataset.page);
+      });
+    });
+
+    // Initial load
     navigateTo('home');
   </script>
 </body>
