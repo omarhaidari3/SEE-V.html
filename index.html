@@ -3,124 +3,310 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>SEE-V Mini LinkedIn with Firebase</title>
+  <title>SEE-V Profiles with Sidebar & Department Filter</title>
   <style>
-    body {
-      font-family: Arial, sans-serif;
-      background: linear-gradient(135deg, #3a0ca3, #720026);
-      color: white;
-      padding: 20px;
-      max-width: 600px;
-      margin: auto;
+    /* CSS Variables for theming */
+    :root {
+      --sidebar-bg: #add8e6; /* light blue */
+      --sidebar-text: #000; /* black */
+      --sidebar-border: #007bff; /* blue */
+      --sidebar-hover-bg: #007bff;
+      --sidebar-hover-text: #fff;
+
+      --main-bg: #fff;
+      --main-text: #000;
+
+      --button-bg: #007bff;
+      --button-text: #fff;
+      --button-hover-bg: #0056b3;
+
+      --card-bg: #e9f0ff;
+      --card-border: #007bff;
+      --card-text: #000;
+      --card-shadow: rgba(0,123,255,0.3);
     }
-    h1 {
-      text-align: center;
-      background: linear-gradient(90deg, #7b2ff7, #f107a3);
-      -webkit-background-clip: text;
-      -webkit-text-fill-color: transparent;
-      font-size: 3rem;
-      margin-bottom: 0;
+
+    body.dark {
+      --sidebar-bg: #f0c419; /* yellow */
+      --sidebar-text: #2f2f2f; /* dark grey */
+      --sidebar-border: #b59400;
+      --sidebar-hover-bg: #b59400;
+      --sidebar-hover-text: #fff;
+
+      --main-bg: #2f2f2f;
+      --main-text: #f0f0f0;
+
+      --button-bg: #b59400;
+      --button-text: #fff;
+      --button-hover-bg: #8c7400;
+
+      --card-bg: #444444;
+      --card-border: #b59400;
+      --card-text: #f0f0f0;
+      --card-shadow: rgba(181,148,0,0.5);
     }
-    form {
-      background: rgba(255 255 255 / 0.1);
-      padding: 15px;
-      border-radius: 10px;
-      margin-bottom: 20px;
-    }
-    input, button {
-      width: 100%;
-      padding: 8px;
-      margin-top: 8px;
-      border-radius: 5px;
-      border: none;
-      font-size: 1rem;
-      color: black;
+
+    /* Reset and base */
+    * {
       box-sizing: border-box;
     }
-    button {
-      background: linear-gradient(90deg, #7b2ff7, #f107a3);
-      color: white;
-      border-radius: 25px;
-      cursor: pointer;
-      transition: 0.3s;
-      width: auto;
+    body, html {
+      margin: 0; padding: 0; height: 100%;
+      font-family: "Times New Roman", serif;
+      background: var(--main-bg);
+      color: var(--main-text);
+      transition: background-color 0.3s, color 0.3s;
+    }
+
+    .container {
+      display: flex;
+      height: 100vh;
+      overflow: hidden;
+    }
+
+    /* Sidebar styles */
+    nav {
+      width: 220px;
+      padding: 30px 10px;
+      display: flex;
+      flex-direction: column;
+      gap: 15px;
+      flex-shrink: 0;
+      background: var(--sidebar-bg);
+      color: var(--sidebar-text);
+      transition: background-color 0.3s, color 0.3s;
+    }
+
+    nav a {
+      background-color: var(--main-bg);
+      border: 2px solid var(--sidebar-border);
+      border-radius: 8px;
+      padding: 12px 20px;
+      font-weight: bold;
+      font-family: "Times New Roman", serif;
+      color: var(--sidebar-text);
+      text-decoration: none;
+      transition: background-color 0.3s ease, color 0.3s ease;
+      user-select: none;
+      box-shadow: 0 2px 5px rgba(0, 123, 255, 0.2);
+    }
+
+    nav a:hover,
+    nav a.active {
+      background-color: var(--sidebar-hover-bg);
+      color: var(--sidebar-hover-text);
+      box-shadow: 0 4px 10px rgba(0, 123, 255, 0.7);
+      border-color: var(--sidebar-border);
+    }
+
+    /* Theme toggle button */
+    #themeToggle {
+      margin-top: auto; /* pushes button to bottom */
       padding: 10px 20px;
-      margin-top: 12px;
-    }
-    button:hover {
-      background: linear-gradient(90deg, #f107a3, #7b2ff7);
-    }
-    .user-card {
-      background: rgba(255 255 255 / 0.15);
-      padding: 15px;
-      border-radius: 10px;
-      margin-bottom: 10px;
-    }
-    .user-card h3 {
-      margin: 0;
-      font-weight: 700;
-      color: #f107a3;
-    }
-    .user-card p {
-      margin: 5px 0 0 0;
-    }
-    #searchBar {
-      margin-bottom: 20px;
-      padding: 8px;
-      border-radius: 5px;
+      background-color: var(--button-bg);
+      color: var(--button-text);
       border: none;
-      font-size: 1rem;
+      border-radius: 8px;
+      font-family: "Times New Roman", serif;
+      font-weight: bold;
+      cursor: pointer;
+      box-shadow: 0 3px 6px rgba(0,123,255,0.6);
+      transition: background-color 0.3s ease;
+      user-select: none;
+    }
+    #themeToggle:hover {
+      background-color: var(--button-hover-bg);
+    }
+
+    /* Content area */
+    main {
+      flex-grow: 1;
+      background: var(--main-bg);
+      padding: 30px;
+      overflow-y: auto;
+      color: var(--main-text);
+      font-family: "Times New Roman", serif;
+      transition: background-color 0.3s, color 0.3s;
+    }
+
+    h1, h2, h3 {
+      margin-top: 0;
+      color: var(--main-text);
+    }
+
+    /* Form inputs */
+    form input, form button, form textarea, form select {
+      font-family: "Times New Roman", serif;
       width: 100%;
-      box-sizing: border-box;
+      padding: 10px;
+      margin-bottom: 15px;
+      border-radius: 5px;
+      border: 1px solid var(--sidebar-border);
+      font-size: 1rem;
+      color: var(--main-text);
+      background: var(--main-bg);
+      transition: background-color 0.3s, color 0.3s;
+    }
+
+    form button {
+      background: var(--button-bg);
+      color: var(--button-text);
+      font-weight: bold;
+      cursor: pointer;
+      transition: background 0.3s ease;
+      border: none;
+      box-shadow: 0 3px 6px rgba(0,123,255,0.6);
+    }
+
+    form button:hover {
+      background: var(--button-hover-bg);
+    }
+
+    /* User cards */
+    #usersList > div, #profilesList > div {
+      background: var(--card-bg);
+      color: var(--card-text);
+      padding: 15px;
+      margin-bottom: 10px;
+      border-radius: 8px;
+      font-family: "Times New Roman", serif;
+      border: 1.5px solid var(--card-border);
+      box-shadow: 0 2px 6px var(--card-shadow);
+      transition: background-color 0.3s, color 0.3s, border-color 0.3s;
+    }
+
+    /* Departments list style */
+    #departmentsList {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-bottom: 20px;
+    }
+    #departmentsList button {
+      background: var(--main-bg);
+      border: 2px solid var(--sidebar-border);
+      color: var(--main-text);
+      padding: 10px 15px;
+      border-radius: 8px;
+      cursor: pointer;
+      font-family: "Times New Roman", serif;
+      font-weight: bold;
+      box-shadow: 0 2px 5px rgba(0,123,255,0.2);
+      transition: background-color 0.3s ease, color 0.3s ease;
+    }
+    #departmentsList button:hover {
+      background-color: var(--sidebar-hover-bg);
+      color: var(--sidebar-hover-text);
+      border-color: var(--sidebar-border);
+      box-shadow: 0 4px 10px rgba(0,123,255,0.7);
+    }
+
+    /* Search bar */
+    #deptSearch {
+      margin-bottom: 20px;
+    }
+    #deptSearch input {
+      width: 100%;
+      padding: 10px;
+      font-family: "Times New Roman", serif;
+      font-size: 1rem;
+      border: 1px solid var(--sidebar-border);
+      border-radius: 8px;
+      color: var(--main-text);
+      background: var(--main-bg);
+      transition: background-color 0.3s, color 0.3s;
+    }
+
+    /* Profile boxes for collapsible details */
+    .profile-box {
+      background: var(--card-bg);
+      color: var(--card-text);
+      padding: 12px 15px;
+      margin-bottom: 10px;
+      border-radius: 8px;
+      cursor: pointer;
+      user-select: none;
+      border: 1.5px solid var(--card-border);
+      box-shadow: 0 2px 6px var(--card-shadow);
+      transition: box-shadow 0.3s ease;
+    }
+
+    .profile-name {
+      font-weight: bold;
+      font-size: 1.1rem;
+      font-family: "Times New Roman", serif;
+    }
+
+    .profile-box:hover {
+      box-shadow: 0 0 12px var(--button-bg);
+    }
+
+    /* Responsive */
+    @media (max-width: 600px) {
+      .container {
+        flex-direction: column;
+      }
+      nav {
+        width: 100%;
+        flex-direction: row;
+        justify-content: space-around;
+        padding: 10px 0;
+      }
+      nav a {
+        padding: 10px 15px;
+        border-radius: 6px;
+        border: 2px solid var(--sidebar-border);
+        box-shadow: none;
+      }
+      nav a:hover, nav a.active {
+        background-color: var(--sidebar-hover-bg);
+        color: var(--sidebar-hover-text);
+        border-color: var(--sidebar-border);
+        box-shadow: none;
+      }
+      main {
+        padding: 20px 10px;
+      }
+      #departmentsList {
+        justify-content: center;
+      }
+      #themeToggle {
+        margin-top: 0;
+        order: 10; /* push it to end on small screens */
+      }
     }
   </style>
 </head>
 <body>
+  <div class="container">
+    <nav>
+      <a href="#" class="active" data-page="home">Home</a>
+      <a href="#" data-page="profiles">Profiles</a>
+      <a href="#" data-page="department">Department</a>
+      <a href="#" data-page="about">About Us</a>
+      <a href="#" data-page="contact">Contact</a>
+      <button id="themeToggle" aria-label="Toggle light and dark theme">Switch to Dark Mode</button>
+    </nav>
 
-  <h1>SEE-V</h1>
+    <main id="mainContent">
+      <!-- Content will load here -->
+    </main>
+  </div>
 
-  <form id="userForm">
-    <h2>Create Profile</h2>
-    <input type="text" id="name" placeholder="Name" required />
-    <input type="email" id="email" placeholder="Email" required />
-    <input type="text" id="department" placeholder="Department" required />
-    <input type="date" id="dob" placeholder="Date of Birth" required />
-    <input type="text" id="languages" placeholder="Languages (comma separated)" />
-    <input type="file" id="pdfFile" accept="application/pdf" />
-    <button type="submit">Add User</button>
-  </form>
-
-  <input type="text" id="searchBar" placeholder="Search by Department..." />
-
-  <section id="usersList">
-    <h2>User Profiles</h2>
-    <p id="noUsersMsg">Loading users...</p>
-  </section>
-
-  <!-- Firebase SDKs -->
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/12.0.0/firebase-app.js";
     import {
-      getFirestore,
-      collection,
-      addDoc,
-      query,
-      onSnapshot,
-      where,
-      getDocs
+      getFirestore, collection, addDoc, getDocs, query, where
     } from "https://www.gstatic.com/firebasejs/12.0.0/firebase-firestore.js";
     import {
-      getStorage,
-      ref,
-      uploadBytes,
-      getDownloadURL
+      getStorage, ref, uploadBytesResumable, getDownloadURL
     } from "https://www.gstatic.com/firebasejs/12.0.0/firebase-storage.js";
 
     const firebaseConfig = {
       apiKey: "AIzaSyCPQ4YPE8oCGcpjw2dcAgZrAdU65gG83_4",
       authDomain: "see-v-f68db.firebaseapp.com",
       projectId: "see-v-f68db",
-      storageBucket: "see-v-f68db.firebasestorage.app",
+      storageBucket: "see-v-f68db.appspot.com",
       messagingSenderId: "614899334242",
       appId: "1:614899334242:web:ceb5181a97039b2cdea53b"
     };
@@ -129,107 +315,384 @@
     const db = getFirestore(app);
     const storage = getStorage(app);
 
-    const userForm = document.getElementById('userForm');
-    const usersList = document.getElementById('usersList');
-    const noUsersMsg = document.getElementById('noUsersMsg');
-    const searchBar = document.getElementById('searchBar');
+    const mainContent = document.getElementById('mainContent');
+    const navLinks = document.querySelectorAll('nav a');
+    const themeToggle = document.getElementById('themeToggle');
 
-    let allUsers = []; // to store all users locally for filtering
+    // Departments list
+    const departments = [
+      "Computer Engineering",
+      "Electrical Engineering",
+      "Mechanical Engineering",
+      "Civil Engineering",
+      "Chemical Engineering",
+      "Biomedical Engineering",
+      "Industrial Engineering",
+      "Environmental Engineering",
+      "Aerospace Engineering",
+      "Materials Engineering",
+      "Computer Science",
+      "Accounting",
+      "Marketing",
+      "Finance",
+      "Human Resources",
+      "Management",
+      "Business Analytics",
+      "Artificial Intelligence",
+      "Cyber Security",
+      "Data Science",
+      "Information Technology"
+    ];
 
-    userForm.addEventListener('submit', async (e) => {
-      e.preventDefault();
-
-      const name = document.getElementById('name').value.trim();
-      const email = document.getElementById('email').value.trim();
-      const department = document.getElementById('department').value.trim();
-      const dob = document.getElementById('dob').value;
-      const languages = document.getElementById('languages').value.trim();
-      const pdfFile = document.getElementById('pdfFile').files[0];
-
-      if(!name || !email || !department || !dob) {
-        alert('Please fill all required fields');
-        return;
+    // Theme toggle logic
+    function applyTheme(theme) {
+      if(theme === 'dark') {
+        document.body.classList.add('dark');
+        themeToggle.textContent = 'Switch to Light Mode';
+      } else {
+        document.body.classList.remove('dark');
+        themeToggle.textContent = 'Switch to Dark Mode';
       }
+      localStorage.setItem('seev-theme', theme);
+    }
 
-      // Check if email exists
-      const q = query(collection(db, "users"), where("email", "==", email));
-      const querySnapshot = await getDocs(q);
-      if (!querySnapshot.empty) {
-        alert('This email is already registered!');
-        return;
-      }
+    const savedTheme = localStorage.getItem('seev-theme') || 'light';
+    applyTheme(savedTheme);
 
-      let pdfURL = "";
-      if (pdfFile) {
-        try {
-          const pdfRef = ref(storage, `pdfs/${email}_${Date.now()}_${pdfFile.name}`);
-          const snapshot = await uploadBytes(pdfRef, pdfFile);
-          pdfURL = await getDownloadURL(snapshot.ref);
-        } catch(error) {
-          alert("PDF upload failed: " + error.message);
-          return;
-        }
-      }
-
-      try {
-        await addDoc(collection(db, "users"), {
-          name,
-          email,
-          department,
-          dob,
-          languages,
-          pdfURL
-        });
-
-        userForm.reset();
-      } catch (error) {
-        alert("Error adding user: " + error.message);
-      }
+    themeToggle.addEventListener('click', () => {
+      const currentTheme = document.body.classList.contains('dark') ? 'dark' : 'light';
+      const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
+      applyTheme(newTheme);
     });
 
-    // Render users
-    function renderUsers(users) {
-      usersList.innerHTML = '<h2>User Profiles</h2>';
-      if (users.length === 0) {
-        noUsersMsg.style.display = 'block';
-        noUsersMsg.textContent = 'No users found.';
-        return;
-      }
-      noUsersMsg.style.display = 'none';
-
-      users.forEach(user => {
-        const div = document.createElement('div');
-        div.className = 'user-card';
-        div.innerHTML = `
-          <h3>${user.name}</h3>
-          <p><strong>Email:</strong> ${user.email}</p>
-          <p><strong>Department:</strong> ${user.department}</p>
-          <p><strong>Date of Birth:</strong> ${user.dob}</p>
-          <p><strong>Languages:</strong> ${user.languages || 'None'}</p>
-          ${user.pdfURL ? `<p><a href="${user.pdfURL}" target="_blank" style="color:#f107a3;">View PDF</a></p>` : ''}
-        `;
-        usersList.appendChild(div);
+    function setActiveLink(page) {
+      navLinks.forEach(link => {
+        link.classList.toggle('active', link.dataset.page === page);
       });
     }
 
-    // Real-time snapshot listener
-    onSnapshot(collection(db, "users"), (snapshot) => {
-      allUsers = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-      renderUsers(allUsers);
+    async function loadHome() {
+      mainContent.innerHTML = `
+        <h1 style="text-align:center; font-size:3rem; margin-top: 30vh; animation: pulse 2s infinite;">
+          Welcome to SEE-V
+        </h1>
+        <p style="text-align:center; font-family:'Times New Roman', serif; font-size: 1.2rem; margin-top: 10px;">
+          Your gateway to showcasing your professional profile. Add your CV now!
+        </p>
+        <div style="text-align:center; margin-top: 30px;">
+          <button id="goToAddUser" style="
+            padding: 12px 28px; 
+            background: var(--button-bg); 
+            color: var(--button-text); 
+            border:none; 
+            border-radius: 10px;
+            font-family: 'Times New Roman', serif;
+            font-weight: bold;
+            cursor:pointer;
+            font-size: 1.1rem;
+            box-shadow: 0 4px 10px rgba(0,123,255,0.7);
+            transition: background-color 0.3s ease;
+          ">Add Your CV</button>
+        </div>
+
+        <style>
+          @keyframes pulse {
+            0% { opacity: 1; }
+            50% { opacity: 0.6; }
+            100% { opacity: 1; }
+          }
+          #goToAddUser:hover {
+            background-color: var(--button-hover-bg);
+          }
+        </style>
+      `;
+
+      document.getElementById('goToAddUser').addEventListener('click', () => {
+        navigateTo('department');
+      });
+    }
+
+    async function loadDepartment() {
+      mainContent.innerHTML = `
+        <h1>Departments</h1>
+        <div id="deptSearch">
+          <input type="text" placeholder="Search by department..." id="searchInput" />
+        </div>
+        <div id="departmentsList"></div>
+        <button id="showAddUserFormBtn" style="
+          padding: 10px 20px; 
+          background: var(--button-bg); 
+          color: var(--button-text); 
+          border:none; 
+          border-radius: 8px;
+          font-family: 'Times New Roman', serif;
+          font-weight: bold;
+          cursor:pointer;
+          margin-top: 20px;
+        ">Add Your CV</button>
+
+        <div id="addUserFormContainer" style="display:none; margin-top: 30px;">
+          <h2>Add Your Profile</h2>
+          <form id="userForm">
+            <label>Name:</label>
+            <input type="text" id="name" required />
+            <label>Email:</label>
+            <input type="email" id="email" required />
+            <label>Department:</label>
+            <select id="department" required>
+              <option value="">Select department</option>
+              ${departments.map(dep => `<option value="${dep}">${dep}</option>`).join('')}
+            </select>
+            <label>Date of Birth:</label>
+            <input type="date" id="dob" required />
+            <label>Languages:</label>
+            <input type="text" id="languages" placeholder="Comma separated" />
+            <label>Upload Resume (PDF, optional):</label>
+            <input type="file" id="resume" accept="application/pdf" />
+            <progress id="uploadProgress" value="0" max="100" style="width: 100%; display:none;"></progress>
+            <button type="submit">Add User</button>
+          </form>
+        </div>
+
+        <div id="usersList" style="margin-top: 30px;"></div>
+      `;
+
+      const departmentsList = document.getElementById('departmentsList');
+      const searchInput = document.getElementById('searchInput');
+      const showAddUserFormBtn = document.getElementById('showAddUserFormBtn');
+      const addUserFormContainer = document.getElementById('addUserFormContainer');
+      const usersList = document.getElementById('usersList');
+      const userForm = document.getElementById('userForm');
+      const progressBar = document.getElementById('uploadProgress');
+
+      function renderDepartments(filter = "") {
+        const filtered = departments.filter(dep =>
+          dep.toLowerCase().includes(filter.toLowerCase())
+        );
+        departmentsList.innerHTML = "";
+        if(filtered.length === 0){
+          departmentsList.innerHTML = "<p>No departments found.</p>";
+          return;
+        }
+        filtered.forEach(dep => {
+          const btn = document.createElement('button');
+          btn.textContent = dep;
+          btn.addEventListener('click', () => loadUsersByDepartment(dep));
+          departmentsList.appendChild(btn);
+        });
+      }
+
+      renderDepartments();
+
+      searchInput.addEventListener('input', () => {
+        renderDepartments(searchInput.value);
+      });
+
+      showAddUserFormBtn.addEventListener('click', () => {
+        if(addUserFormContainer.style.display === 'none'){
+          addUserFormContainer.style.display = 'block';
+          showAddUserFormBtn.textContent = 'Hide Add Profile Form';
+        } else {
+          addUserFormContainer.style.display = 'none';
+          showAddUserFormBtn.textContent = 'Add Your CV';
+        }
+      });
+
+      userForm.addEventListener('submit', async e => {
+        e.preventDefault();
+        const name = document.getElementById('name').value.trim();
+        const email = document.getElementById('email').value.trim();
+        const department = document.getElementById('department').value;
+        const dob = document.getElementById('dob').value;
+        const languages = document.getElementById('languages').value.trim();
+        const resumeFile = document.getElementById('resume').files[0];
+
+        if(!name || !email || !department || !dob){
+          alert('Please fill all required fields.');
+          return;
+        }
+
+        // Check if email already exists:
+        const emailQuery = query(collection(db, 'users'), where('email', '==', email));
+        const emailSnapshot = await getDocs(emailQuery);
+        if(!emailSnapshot.empty) {
+          alert('This email is already registered.');
+          return;
+        }
+
+        let resumeUrl = null;
+
+        if(resumeFile){
+          progressBar.style.display = 'block';
+          const storageRef = ref(storage, `resumes/${Date.now()}_${resumeFile.name}`);
+          const uploadTask = uploadBytesResumable(storageRef, resumeFile);
+          uploadTask.on('state_changed',
+            (snapshot) => {
+              const progress = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
+              progressBar.value = progress;
+            },
+            (error) => {
+              alert('Upload failed: ' + error.message);
+              progressBar.style.display = 'none';
+            },
+            async () => {
+              resumeUrl = await getDownloadURL(uploadTask.snapshot.ref);
+              progressBar.style.display = 'none';
+              await addUserData();
+            }
+          );
+        } else {
+          await addUserData();
+        }
+
+        async function addUserData(){
+          try {
+            await addDoc(collection(db, 'users'), {
+              name, email, department, dob, languages, resumeUrl
+            });
+            alert('Profile added successfully!');
+            userForm.reset();
+            addUserFormContainer.style.display = 'none';
+            showAddUserFormBtn.textContent = 'Add Your CV';
+            loadUsersByDepartment(department); // reload the filtered users
+          } catch (error) {
+            alert('Error adding profile: ' + error.message);
+          }
+        }
+      });
+
+      // Load users by department
+      async function loadUsersByDepartment(dep) {
+        usersList.innerHTML = `<p>Loading profiles for <strong>${dep}</strong>...</p>`;
+        try {
+          const q = query(collection(db, 'users'), where('department', '==', dep));
+          const querySnapshot = await getDocs(q);
+          if(querySnapshot.empty){
+            usersList.innerHTML = `<p>No profiles found in <strong>${dep}</strong>.</p>`;
+            return;
+          }
+          usersList.innerHTML = '';
+          querySnapshot.forEach(doc => {
+            const data = doc.data();
+            const div = document.createElement('div');
+            div.innerHTML = `
+              <strong>${data.name}</strong><br />
+              Email: ${data.email}<br />
+              DOB: ${data.dob}<br />
+              Languages: ${data.languages || 'N/A'}<br />
+              ${data.resumeUrl ? `<a href="${data.resumeUrl}" target="_blank" rel="noopener noreferrer">View Resume</a>` : ''}
+            `;
+            div.style.background = 'var(--card-bg)';
+            div.style.color = 'var(--card-text)';
+            div.style.padding = '10px';
+            div.style.marginBottom = '8px';
+            div.style.borderRadius = '8px';
+            div.style.border = '1.5px solid var(--card-border)';
+            div.style.boxShadow = '0 2px 6px var(--card-shadow)';
+            usersList.appendChild(div);
+          });
+        } catch (error) {
+          usersList.innerHTML = `<p>Error loading profiles: ${error.message}</p>`;
+        }
+      }
+    }
+
+    async function loadProfiles() {
+      mainContent.innerHTML = `<h1>All Profiles</h1><div id="profilesList">Loading profiles...</div>`;
+      const profilesList = document.getElementById('profilesList');
+      try {
+        const querySnapshot = await getDocs(collection(db, 'users'));
+        profilesList.innerHTML = '';
+        if (querySnapshot.empty) {
+          profilesList.innerHTML = '<p>No profiles found.</p>';
+          return;
+        }
+        querySnapshot.forEach(doc => {
+          const data = doc.data();
+          const div = document.createElement('div');
+          div.classList.add('profile-box');
+          div.innerHTML = `
+            <div class="profile-name">${data.name}</div>
+            <div class="profile-details" style="display:none; margin-top:10px; font-size:0.9rem; color: var(--main-text);">
+              <strong>Email:</strong> ${data.email} <br />
+              <strong>Department:</strong> ${data.department} <br />
+              <strong>DOB:</strong> ${data.dob} <br />
+              <strong>Languages:</strong> ${data.languages || 'N/A'} <br />
+              ${data.resumeUrl ? `<a href="${data.resumeUrl}" target="_blank" rel="noopener noreferrer">View Resume</a>` : ''}
+            </div>
+          `;
+          // Toggle details on click
+          div.addEventListener('click', () => {
+            const details = div.querySelector('.profile-details');
+            if(details.style.display === 'none') {
+              details.style.display = 'block';
+              div.style.boxShadow = '0 0 12px var(--button-bg)';
+            } else {
+              details.style.display = 'none';
+              div.style.boxShadow = '0 2px 6px var(--card-shadow)';
+            }
+          });
+          profilesList.appendChild(div);
+        });
+      } catch (error) {
+        profilesList.innerHTML = `<p>Error loading profiles: ${error.message}</p>`;
+      }
+    }
+
+    function loadAbout() {
+      mainContent.innerHTML = `
+        <h1>About Us</h1>
+        <p style="line-height: 1.5; font-family:'Times New Roman', serif;">
+          Welcome to SEE-V, your trusted platform designed to connect new graduates and professionals with top companies.<br><br>
+          We understand the challenges faced by fresh graduates entering the job market and the need for companies to find talented individuals efficiently.<br><br>
+          SEE-V provides a simple, effective way to showcase your CV and skills to potential employers across multiple departments including Engineering, Business, AI, Cybersecurity, and more.<br><br>
+          Companies can browse through profiles, filter by department, and find the right candidates with ease.<br><br>
+          Our mission is to bridge the gap between education and employment by making the job search and recruitment process smooth and accessible for everyone.
+        </p>
+      `;
+    }
+
+    function loadContact() {
+      mainContent.innerHTML = `
+        <h1>Contact Us</h1>
+        <p>Please reach out with any questions or feedback at <a href="mailto:omer.haidari@gmail.com">omer.haidari@gmail.com</a>.</p>
+      `;
+    }
+
+    // Navigation handling
+    navLinks.forEach(link => {
+      link.addEventListener('click', e => {
+        e.preventDefault();
+        const page = link.dataset.page;
+        navigateTo(page);
+      });
     });
 
-    // Search filter
-    searchBar.addEventListener('input', () => {
-      const searchText = searchBar.value.trim().toLowerCase();
-      if (!searchText) {
-        renderUsers(allUsers);
-        return;
+    async function navigateTo(page) {
+      setActiveLink(page);
+      switch(page) {
+        case 'home':
+          loadHome();
+          break;
+        case 'profiles':
+          await loadProfiles();
+          break;
+        case 'department':
+          await loadDepartment();
+          break;
+        case 'about':
+          loadAbout();
+          break;
+        case 'contact':
+          loadContact();
+          break;
+        default:
+          loadHome();
       }
-      const filtered = allUsers.filter(user =>
-        user.department.toLowerCase().includes(searchText)
-      );
-      renderUsers(filtered);
-    });
+    }
+
+    // Load home on initial load
+    navigateTo('home');
   </script>
 </body>
 </html>
