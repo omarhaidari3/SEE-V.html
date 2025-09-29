@@ -1,6 +1,7 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+  <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>SEE-V Profiles with Sidebar & Department Filter</title>
@@ -27,36 +28,70 @@
     }
 
     body.dark {
-      --sidebar-bg: #f0c419; /* yellow */
-      --sidebar-text: #2f2f2f; /* dark grey */
-      --sidebar-border: #b59400;
-      --sidebar-hover-bg: #b59400;
-      --sidebar-hover-text: #fff;
+  --sidebar-bg:#121229;
+  --sidebar-text:#f0f0f0;
+  --sidebar-border:#8c74ff;
+  --sidebar-hover-bg:#8c74ff;
+  --sidebar-hover-text:#fff;
 
-      --main-bg: #2f2f2f;
-      --main-text: #f0f0f0;
+  --main-bg:#1e1e2e;
+  --main-text:#f0f0f0;
 
-      --button-bg: #b59400;
-      --button-text: #fff;
-      --button-hover-bg: #8c7400;
+  --button-bg:#8c74ff;
+  --button-text:#fff;
+  --button-hover-bg:#6f5aff;
 
-      --card-bg: #444444;
-      --card-border: #b59400;
-      --card-text: #f0f0f0;
-      --card-shadow: rgba(181,148,0,0.5);
-    }
+  --card-bg:#2c2c3e;
+  --card-border:#8c74ff;
+  --card-text:#f0f0f0;
+  --card-shadow:rgba(140,116,255,0.25);
+}
+    body, input, button, select, textarea {
+  font-family: 'Roboto', sans-serif;
+  line-height: 1.5;
+}
+h1, h2, h3 {
+  font-family: 'Poppins', sans-serif;
+  font-weight: 600;
+}
+
 
     /* Reset and base */
-    * {
-      box-sizing: border-box;
-    }
-    body, html {
-      margin: 0; padding: 0; height: 100%;
-      font-family: "Times New Roman", serif;
-      background: var(--main-bg);
-      color: var(--main-text);
-      transition: background-color 0.3s, color 0.3s;
-    }
+* {
+  box-sizing: border-box;
+}
+
+body, input, button, select, textarea {
+  font-family: 'Roboto', sans-serif;
+}
+
+   body, html {
+  margin: 0; padding: 0; height: 100%;
+  font-family: "Times New Roman", serif;
+  color: var(--main-text);
+  transition: background-color 0.3s, color 0.3s;
+
+  /* doodle / zigzag pattern */
+  background-color: var(--main-bg);
+  background-image: 
+    repeating-linear-gradient(
+      135deg,
+      rgba(0, 0, 0, 0.05) 0px,
+      rgba(0, 0, 0, 0.05) 4px,
+      transparent 4px,
+      transparent 8px
+    ),
+    repeating-linear-gradient(
+      45deg,
+      rgba(0, 0, 0, 0.05) 0px,
+      rgba(0, 0, 0, 0.05) 4px,
+      transparent 4px,
+      transparent 8px
+    );
+  background-size: 40px 40px;
+  background-repeat: repeat;
+}
+
 
     .container {
       display: flex;
@@ -223,6 +258,49 @@
       box-shadow: 0 2px 5px rgba(0,123,255,0.2);
       transition: background-color 0.3s ease, color 0.3s ease;
     }
+    /* Department category header */
+.dept-category {
+  cursor: pointer;
+  margin-bottom: 5px;
+  padding: 5px 10px;
+  font-weight: bold;
+  font-size: 1.1rem;
+  border-radius: 8px;
+  transition: background-color 0.3s, color 0.3s;
+  user-select: none;
+}
+
+/* Category colors for dark/light mode */
+.dept-category.engineering { background-color: #007bff; color: #fff; }
+body.dark .dept-category.engineering { background-color: #8c74ff; color: #fff; }
+
+.dept-category.business { background-color: #28a745; color: #fff; }
+body.dark .dept-category.business { background-color: #6fcf97; color: #fff; }
+
+.dept-category.itai { background-color: #ffc107; color: #000; }
+body.dark .dept-category.itai { background-color: #ffea7f; color: #000; }
+
+.dept-category.medical { background-color: #dc3545; color: #fff; }
+body.dark .dept-category.medical { background-color: #ff7f87; color: #fff; }
+
+/* Department buttons */
+.dept-btn {
+  padding: 6px 12px;
+  margin: 3px;
+  border-radius: 6px;
+  border: 1px solid var(--sidebar-border);
+  cursor: pointer;
+  transition: background-color 0.3s, transform 0.2s;
+  font-weight: 500;
+  font-size: 0.95rem;
+}
+
+.dept-btn:hover {
+  background-color: var(--sidebar-hover-bg);
+  color: var(--sidebar-hover-text);
+  transform: scale(1.05);
+}
+
     #departmentsList button:hover {
       background-color: var(--sidebar-hover-bg);
       color: var(--sidebar-hover-text);
@@ -493,18 +571,61 @@ const storage = getStorage(app);
       const progressBar = document.getElementById('uploadProgress');
 
       function renderDepartments(filter = "") {
-        const filtered = departments.filter(dep =>
-          dep.toLowerCase().includes(filter.toLowerCase())
-        );
-        departmentsList.innerHTML = filtered.map(dep => `<button type="button" class="dept-btn">${dep}</button>`).join('');
-        // Add click to filter users by dept
-        const deptButtons = departmentsList.querySelectorAll('.dept-btn');
-        deptButtons.forEach(btn => {
-          btn.addEventListener('click', () => {
-            filterUsersByDepartment(btn.textContent);
-          });
-        });
+  const departmentsList = document.getElementById('departmentsList');
+  
+  // Group departments by category
+  const departmentGroups = {
+    "Engineering": departments.filter(d => d.toLowerCase().includes('engineering')),
+    "Business": departments.filter(d => ['accounting','marketing','finance','human resources','management','business analytics'].some(b => d.toLowerCase().includes(b))),
+    "IT & AI": departments.filter(d => ['computer science','artificial intelligence','cyber security','data science','information technology'].some(b => d.toLowerCase().includes(b))),
+    "Medical & Bio": departments.filter(d => ['biomedical','environmental','chemical','materials','aerospace'].some(b => d.toLowerCase().includes(b))),
+    "Other": departments.filter(d => ![
+      'engineering','accounting','marketing','finance','human resources','management','business analytics',
+      'computer science','artificial intelligence','cyber security','data science','information technology',
+      'biomedical','environmental','chemical','materials','aerospace'
+    ].some(b => d.toLowerCase().includes(b)))
+  };
+
+  departmentsList.innerHTML = '';
+
+  for(const [category, deps] of Object.entries(departmentGroups)) {
+    if(deps.length === 0) continue;
+
+    const catDiv = document.createElement('div');
+    catDiv.style.marginBottom = '12px';
+
+    const catHeader = document.createElement('div');
+    catHeader.textContent = category + " ⬇️";
+    catHeader.className = `dept-category ${category.toLowerCase().replace(/\s/g, '')}`;
+    catDiv.appendChild(catHeader);
+
+    const btnContainer = document.createElement('div');
+    btnContainer.style.display = 'none';
+    btnContainer.style.flexWrap = 'wrap';
+    btnContainer.style.gap = '6px';
+
+    deps.forEach(dep => {
+      const btn = document.createElement('button');
+      btn.textContent = dep;
+      btn.className = 'dept-btn';
+      btn.addEventListener('click', () => filterUsersByDepartment(dep));
+      btnContainer.appendChild(btn);
+    });
+
+    catHeader.addEventListener('click', () => {
+      if(btnContainer.style.display === 'none') {
+        btnContainer.style.display = 'flex';
+        catHeader.textContent = category + " ⬆️";
+      } else {
+        btnContainer.style.display = 'none';
+        catHeader.textContent = category + " ⬇️";
       }
+    });
+
+    catDiv.appendChild(btnContainer);
+    departmentsList.appendChild(catDiv);
+  }
+}
 
       function createUserCard(user) {
         const card = document.createElement('div');
@@ -739,3 +860,4 @@ const storage = getStorage(app);
   </script>
 </body>
 </html>
+
